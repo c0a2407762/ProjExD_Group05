@@ -3,8 +3,10 @@ import sys
 import os
 import random
 
+
 # 指定条件
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
 
 # =====================
 # 定数
@@ -16,6 +18,7 @@ GRAVITY = 1
 JUMP_POWER = -18
 MAX_JUMP = 3
 
+
 # =====================
 # 初期化
 # =====================
@@ -25,13 +28,14 @@ pg.display.set_caption("こうかとん、講義に遅刻する")
 clock = pg.time.Clock()
 font = pg.font.SysFont(None, 32)
 
+
 # =====================
 # 主人公
 # =====================
 class Player(pg.sprite.Sprite):
     def __init__(self):
         super().__init__()
-        self.image = pg.image.load("C:/Users/Admin/Documents/ProjExD/ex4/fig/2.png").convert_alpha()
+        self.image = pg.image.load("C:/Users/Admin/Documents/ProjExD/ex5/fig/2.png").convert_alpha()
         self.image = pg.transform.scale(self.image, (48, 48))
         self.rect = self.image.get_rect(midbottom=(150, GROUND_Y))
         self.vel_y = 0
@@ -63,6 +67,7 @@ class Player(pg.sprite.Sprite):
             self.vel_y = JUMP_POWER
             self.jump_count += 1
 
+
 # =====================
 # 段差
 # =====================
@@ -75,6 +80,7 @@ class Step:
     def update(self, speed):
         self.rect.x -= speed
 
+
 # =====================
 # 穴
 # =====================
@@ -85,6 +91,7 @@ class Hole:
 
     def update(self, speed):
         self.rect.x -= speed
+
 
 # =====================
 # ゴール旗
@@ -102,6 +109,47 @@ class GoalFlag:
         pg.draw.rect(screen, (200, 200, 200), self.pole)
         pg.draw.rect(screen, (255, 0, 0), self.flag)
 
+
+# =====================
+# バス
+# =====================
+class Bus:
+    """
+    空から落下してくるバス障害物を表すクラス。
+    上から着地することは可能だが、
+    横や下から衝突するとゲームオーバーになる。
+    """
+    def __init__(self, x: int) -> None:
+        """
+        バスを生成する
+        引数：x (int)：バスを出現させるx座標
+        戻り値：なし
+        """
+        self.image = pg.image.load(
+            "C:/Users/Admin/Documents/ProjExD/ex5/fig/bus_nonstep_close.png"
+        ).convert_alpha()
+        self.image = pg.transform.scale(self.image, (100, 50))
+        self.rect = self.image.get_rect(midtop=(x, -50))  # 画面の外からの登場のため、負の値
+        self.vel_y = 6  # 落下速度
+
+    def update(self, speed: int) -> None:
+        """
+        バスの位置を更新する
+        引数：speed (int)：スクロール速度
+        戻り値：なし
+        """
+        self.rect.y += self.vel_y
+        self.rect.x -= speed  # ステージが進むごとに横移動のスピードが速くなる
+
+    def draw(self) -> None:
+        """
+        バスを画面に描画する
+        引数：なし
+        戻り値：なし
+        """
+        screen.blit(self.image, self.rect)
+
+
 # =====================
 # メイン
 # =====================
@@ -114,6 +162,7 @@ def main():
         player = Player()
         steps = []
         holes = []
+        buses = []
         goal = GoalFlag(goal_distance)
         frame = 0
         state = "play"
@@ -154,10 +203,16 @@ def main():
                     else:
                         holes.append(Hole(x))
 
+                # バスの生成
+                if frame % 300 == 0:  # 一定時間ごとにバスを生成
+                    buses.append(Bus(random.randint(100, WIDTH - 100)))  # ランダムな位置からバスを落下させる
+
                 for s in steps:
                     s.update(speed)
                 for h in holes:
                     h.update(speed)
+                for b in buses:
+                    b.update(speed)
                 goal.update(speed)
 
                 # ===== 地面生成（穴を除外） =====
@@ -180,7 +235,6 @@ def main():
                     base_grounds = new_grounds
 
                 grounds = base_grounds + [s.rect for s in steps]
-
                 if player.update(grounds) == "fall":
                     state = "gameover"
 
@@ -189,6 +243,17 @@ def main():
                     if player.rect.colliderect(s.rect):
                         if not (player.rect.bottom <= s.rect.top + 5 and player.vel_y >= 0):
                             state = "gameover"
+
+                # バスの衝突
+                for b in buses:
+                    if player.rect.colliderect(b.rect):
+                        if (player.vel_y >= 0 and player.rect.bottom - player.vel_y <= b.rect.top):  # バスの上から着地した場合はセーフ
+                            player.rect.bottom = b.rect.top
+                            player.vel_y = 0
+                            player.jump_count = 0
+                        else:
+                            state = "gameover"  # 横 or 下に当たったらゲームオーバー
+                buses = [b for b in buses if b.rect.top < HEIGHT]  # 画面外のバス画像は削除            
 
                 # ゴール
                 if player.rect.colliderect(goal.pole):
@@ -202,6 +267,8 @@ def main():
                 pg.draw.rect(screen, (0, 0, 0), h.rect)
             for s in steps:
                 pg.draw.rect(screen, (50, 200, 50), s.rect)
+            for b in buses:
+                b.draw()
 
             goal.draw()
             screen.blit(player.image, player.rect)
@@ -221,6 +288,7 @@ def main():
 
             if next_stage:
                 break
+
 
 # =====================
 if __name__ == "__main__":
