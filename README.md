@@ -1,5 +1,7 @@
 # こうかとん、講義に遅刻する
 
+ ![title](fig/gaming.png)
+
 ## 実行環境の必要条件
 * python >= 3.10
 * pygame >= 2.1
